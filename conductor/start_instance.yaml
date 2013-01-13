@@ -1,0 +1,64 @@
+# Name of the S3 bucket to use to store the certname of started instances
+s3_bucket_name: cpm-puppet-nodes-1
+# Base AMI id to use to start all instances
+ami_id: ami-137bcf7a
+instance_type: "t1.micro"
+key_name: "cpm"
+security_groups: ["nas"]
+# Information passed to cloud-init when starting new instances
+# see cloud-init documentation for available options.
+cloud_init: &site-cloud-init
+  # Puppet configuration - see cloud-init documentation.
+  puppet:
+    conf:
+      agent:
+        # Puppet server hostname or IP
+        # In EC2 the Private DNS of the instance should be used
+        server: "ip-10-195-79-217.ec2.internal"
+        # NB: the certname will automatically be added by start_instance.py
+        # when a new instance is started.
+      # Puppetmaster ca certificate
+      # located in /var/lib/puppet/ssl/ca/ca_crt.pem on the puppetmaster system
+      ca_cert: |
+        -----BEGIN CERTIFICATE-----
+        MIICGTCCAYKgAwIBAgIBATANBgkqhkiG9w0BAQUFADAUMRIwEAYDVQQDDAlQdXBw
+        ZXQgQ0EwHhcNMTIwOTMwMjEwOTA4WhcNMTcwOTMwMjEwOTA4WjAUMRIwEAYDVQQD
+        DAlQdXBwZXQgQ0EwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMsfBeFQFHOE
+        k+GRZYvQvGvsjFKo/Ukc3qH/teewq3jY7mPb7xb63G+L5c0gPPGHrMa0IVA8cwQ/
+        40luSaFS9V4yTNqsuhjX6vba+xk4Kw+SJJOYgD1lRHLMOhnYQFGwxUUeah+Wz2AU
+        FOoFUUKzX7yYKldGm88htW8OuwQesb2DAgMBAAGjezB5MB0GA1UdDgQWBBSB9ydH
+        TjWo0vffm9UVfUBKSML5vzAPBgNVHRMBAf8EBTADAQH/MDcGCWCGSAGG+EIBDQQq
+        FihQdXBwZXQgUnVieS9PcGVuU1NMIEludGVybmFsIENlcnRpZmljYXRlMA4GA1Ud
+        DwEB/wQEAwIBBjANBgkqhkiG9w0BAQUFAAOBgQAU1UN8PYANqsiVqAcHjb9oocah
+        1fyUXX3Wri7S2xi+QDpR6GZ0ti0M6TSEADOOiE82oPoEW6eiApyqLwwGBi6laRDd
+        +UhbSOcuZVs6ZDZSKYrTTpZvAkRvc6fquKHDgWt7fsU2PeMF2KY4bpGhFBYYI7xY
+        5qVBr6ni9IHkVgKLTA==
+        -----END CERTIFICATE-----
+# Available puppet nodes that can be used to start new instances.
+puppet_nodes:
+  puppetmaster:
+    # Cloud-init configuration to be used when that type of node is started.
+    cloud_init: 
+      <<: *site-cloud-init
+      # If the puppet key is set to false, start_instance.py will automatically
+      # delete the key. That way the instance won't have puppet installed and 
+      # configured on boot.
+      puppet: false
+      # Automatically install the following packages on the puppet master
+      packages:
+        - rsync
+        - puppet
+  gluster_server_master:
+    cloud_init: *site-cloud-init
+    # The value of the external_node key is the yaml sent to the external_node 
+    # script.
+    # See http://docs.puppetlabs.com/guides/external_nodes.html for more info.
+    external_node:
+      classes: ['gluster::server', 'gluster::server::master', 'gluster::client']
+  gluster_server_slave:
+    cloud_init: *site-cloud-init
+    # The value of the external_node key is the yaml sent to the external_node 
+    # script.
+    # See http://docs.puppetlabs.com/guides/external_nodes.html for more info.
+    external_node:
+      classes: ['gluster::server', 'gluster::server::slave', 'gluster::client']
